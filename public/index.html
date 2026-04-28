@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="description" content="Free AI-powered background remover - Remove image backgrounds instantly with high quality">
+    <meta name="theme-color" content="#6366f1">
+    <title>BG Remover AI | Remove Background Instantly</title>
+    <link rel="icon" type="image/png" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%236366f1'/%3E%3Cpath d='M50 20 L65 35 L50 50 L35 35 Z' fill='white'/%3E%3Ccircle cx='50' cy='50' r='15' fill='white'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%236366f1'/%3E%3Cpath d='M50 20 L65 35 L50 50 L35 35 Z' fill='white'/%3E%3Ccircle cx='50' cy='50' r='15' fill='white'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1f2937;
+            overflow-x: hidden;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveDots 20s linear infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes moveDots {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-50px, -50px); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px 60px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 100px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .logo i {
+            font-size: 32px;
+            color: #fff;
+        }
+
+        .logo span {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.95);
+            margin-bottom: 40px;
+            font-weight: 500;
+        }
+
+        .stats-grid {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            text-align: center;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+            min-width: 150px;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
+            margin-top: 5px;
+        }
+
+        .success-stat .stat-icon { color: #10b981; }
+        .failed-stat .stat-icon { color: #ef4444; }
+        .total-stat .stat-icon { color: #f59e0b; }
+        .rate-stat .stat-icon { color: #3b82f6; }
+
+        .main-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 30px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .main-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 70px rgba(0,0,0,0.25);
+        }
+
+        .upload-area {
+            border: 3px dashed #c7d2fe;
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8fafc;
+        }
+
+        .upload-area:hover {
+            border-color: #6366f1;
+            background: #eef2ff;
+            transform: scale(1.02);
+        }
+
+        .upload-area.drag-over {
+            border-color: #6366f1;
+            background: #e0e7ff;
+            transform: scale(1.05);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            color: #6366f1;
+            margin-bottom: 20px;
+        }
+
+        .upload-area h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #1f2937;
+        }
+
+        .upload-area p {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .preview-section {
+            margin-top: 40px;
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .image-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .stat-card {
+                min-width: 120px;
+                padding: 15px 20px;
+            }
+            
+            .stat-number {
+                font-size: 24px;
+            }
+        }
+
+        .image-card {
+            background: #f9fafb;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .image-card h4 {
+            margin-bottom: 15px;
+            color: #4b5563;
+            font-size: 18px;
+        }
+
+        .image-container {
+            position: relative;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #fecaca;
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            padding: 30px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: opacity 0.3s;
+        }
+
+        .footer a:hover {
+            opacity: 0.8;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast.info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .refresh-stats {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 10px 15px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        .refresh-stats:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-magic"></i>
+                <span>BG Remover AI</span>
+            </div>
+            <h1>Remove Background Instantly</h1>
+            <div class="subtitle">
+                Professional background removal powered by AI • 100% Free • High Quality
+            </div>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card success-stat">
+                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                    <span class="stat-number" id="successCount">0</span>
+                    <span class="stat-label">Successful</span>
+                </div>
+                <div class="stat-card failed-stat">
+                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                    <span class="stat-number" id="failedCount">0</span>
+                    <span class="stat-label">Failed</span>
+                </div>
+                <div class="stat-card total-stat">
+                    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                    <span class="stat-number" id="totalCount">0</span>
+                    <span class="stat-label">Total Processed</span>
+                </div>
+                <div class="stat-card rate-stat">
+                    <div class="stat-icon"><i class="fas fa-percent"></i></div>
+                    <span class="stat-number" id="successRate">0%</span>
+                    <span class="stat-label">Success Rate</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-card">
+            <div class="upload-area" id="uploadArea">
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <h3>Drag & Drop Your Image Here</h3>
+                <p>or click to browse (JPG, PNG, WEBP, up to 20MB)</p>
+                <button class="upload-btn" id="uploadBtn">
+                    <i class="fas fa-folder-open"></i>
+                    Choose Image
+                </button>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="preview-section" id="previewSection">
+                <div class="image-grid">
+                    <div class="image-card">
+                        <h4><i class="fas fa-image"></i> Original Image</h4>
+                        <div class="image-container">
+                            <img id="originalImage" class="preview-img" alt="Original">
+                        </div>
+                    </div>
+                    <div class="image-card">
+                        <h4><i class="fas fa-magic"></i> Processed Image</h4>
+                        <div class="image-container" id="processedContainer">
+                            <div style="text-align: center; color: #9ca3af;">
+                                <i class="fas fa-hourglass-half" style="font-size: 48px; margin-bottom: 10px;"></i>
+                                <p>Waiting for processing...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="downloadBtn" style="display: none;">
+                        <i class="fas fa-download"></i>
+                        Download Result
+                    </button>
+                    <button class="btn btn-secondary" id="newImageBtn">
+                        <i class="fas fa-plus"></i>
+                        New Image
+                    </button>
+                    <button class="btn btn-danger" id="clearBtn" style="display: none;">
+                        <i class="fas fa-trash"></i>
+                        Clear All
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 BG Remover AI - Free Online Background Removal Tool</p>
+            <div>
+                <a href="/portal.html"><i class="fas fa-home"></i> Home</a>
+                <a href="#" id="privacyLink"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="#" id="termsLink"><i class="fas fa-file-contract"></i> Terms of Service</a>
+                <a href="#" id="contactLink"><i class="fas fa-envelope"></i> Contact</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="refresh-stats" id="refreshStatsBtn">
+        <i class="fas fa-sync-alt"></i> Refresh Stats
+    </div>
+
+    <script>
+        let currentFile = null;
+        let processedUrl = null;
+
+        // Load stats from server
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/counters');
+                const data = await response.json();
+                
+                if (data.success && data.stats) {
+                    document.getElementById('successCount').textContent = data.stats.successful.toLocaleString();
+                    document.getElementById('failedCount').textContent = data.stats.failed.toLocaleString();
+                    document.getElementById('totalCount').textContent = data.stats.total.toLocaleString();
+                    document.getElementById('successRate').textContent = `${data.stats.successRate}%`;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Update stats locally after processing
+        function updateStatsLocally(success) {
+            const successEl = document.getElementById('successCount');
+            const failedEl = document.getElementById('failedCount');
+            const totalEl = document.getElementById('totalCount');
+            const rateEl = document.getElementById('successRate');
+            
+            let successCount = parseInt(successEl.textContent.replace(/,/g, '')) || 0;
+            let failedCount = parseInt(failedEl.textContent.replace(/,/g, '')) || 0;
+            
+            if (success) {
+                successCount++;
+            } else {
+                failedCount++;
+            }
+            
+            const total = successCount + failedCount;
+            const rate = total > 0 ? ((successCount / total) * 100).toFixed(1) : 0;
+            
+            successEl.textContent = successCount.toLocaleString();
+            failedEl.textContent = failedCount.toLocaleString();
+            totalEl.textContent = total.toLocaleString();
+            rateEl.textContent = `${rate}%`;
+        }
+
+        // Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const previewSection = document.getElementById('previewSection');
+        const originalImage = document.getElementById('originalImage');
+        const processedContainer = document.getElementById('processedContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const newImageBtn = document.getElementById('newImageBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const refreshStatsBtn = document.getElementById('refreshStatsBtn');
+
+        // Toast function
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Load initial stats
+        loadStats();
+        
+        // Refresh stats button
+        refreshStatsBtn.addEventListener('click', () => {
+            loadStats();
+            showToast('Stats refreshed!', 'info');
+        });
+
+        // Upload handlers
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('Please upload an image file', 'error');
+                return;
+            }
+            
+            if (file.size > 20 * 1024 * 1024) {
+                showToast('File size must be less than 20MB', 'error');
+                return;
+            }
+            
+            currentFile = file;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage.src = e.target.result;
+                previewSection.style.display = 'block';
+                
+                processedContainer.innerHTML = `
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Removing background...</p>
+                    </div>
+                `;
+                
+                processImage(file);
+            };
+            reader.readAsDataURL(file);
+            
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function processImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                const response = await fetch('/api/removebg', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.url) {
+                    processedUrl = data.url;
+                    processedContainer.innerHTML = `<img src="${data.url}" class="preview-img" alt="Processed">`;
+                    downloadBtn.style.display = 'inline-flex';
+                    clearBtn.style.display = 'inline-flex';
+                    
+                    // Update stats from server response
+                    if (data.stats) {
+                        document.getElementById('successCount').textContent = data.stats.successful.toLocaleString();
+                        document.getElementById('failedCount').textContent = data.stats.failed.toLocaleString();
+                        document.getElementById('totalCount').textContent = data.stats.total.toLocaleString();
+                        const rate = data.stats.total > 0 ? ((data.stats.successful / data.stats.total) * 100).toFixed(1) : 0;
+                        document.getElementById('successRate').textContent = `${rate}%`;
+                    } else {
+                        loadStats(); // Fallback to reload stats
+                    }
+                    
+                    showToast('Background removed successfully!', 'success');
+                } else {
+                    throw new Error(data.error || 'Processing failed');
+                }
+            } catch (error) {
+                console.error('Error processing image:', error);
+                processedContainer.innerHTML = `
+                    <div style="text-align: center; color: #ef4444; padding: 40px;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 48px; margin-bottom: 10px;"></i>
+                        <p>Failed to process image. Please try again.</p>
+                    </div>
+                `;
+                showToast('Failed to remove background. Please try again.', 'error');
+                
+                // Reload stats to show updated failed count
+                setTimeout(() => loadStats(), 1000);
+            }
+        }
+
+        downloadBtn.addEventListener('click', async () => {
+            if (processedUrl) {
+                try {
+                    const response = await fetch(`/api/download?url=${encodeURIComponent(processedUrl)}`);
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `processed_${Date.now()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    showToast('Download started!', 'success');
+                } catch (error) {
+                    showToast('Failed to download image', 'error');
+                }
+            }
+        });
+
+        newImageBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            currentFile = null;
+            processedUrl = null;
+            previewSection.style.display = 'none';
+            fileInput.value = '';
+            showToast('Cleared successfully', 'info');
+        });
+
+        // Auto-refresh stats every 30 seconds
+        setInterval(loadStats, 30000);
+    </script>
+</body>
+</html>
