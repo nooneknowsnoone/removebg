@@ -12,8 +12,8 @@ const compression = require("compression")
 const app = express()
 const PORT = process.env.PORT || 3000
 
-// Store counters with file persistence
-const COUNTERS_FILE = path.join(__dirname, 'counters.json')
+// Store counters with file persistence (Vercel compatible)
+const COUNTERS_FILE = path.join('/tmp', 'counters.json') // Use /tmp for Vercel
 
 // Initialize counters
 let counters = {
@@ -23,7 +23,7 @@ let counters = {
   lastReset: new Date().toISOString()
 }
 
-// Load counters from file if exists
+// Load counters from file if exists (for Vercel)
 if (fs.existsSync(COUNTERS_FILE)) {
   try {
     const data = fs.readFileSync(COUNTERS_FILE, 'utf8')
@@ -53,7 +53,7 @@ app.use(helmet({
 
 app.use(compression())
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'your-domain.com' : '*',
+  origin: '*', // Allow all origins for Vercel
   credentials: true
 }))
 
@@ -61,25 +61,29 @@ app.use(cookieParser())
 app.set("trust proxy", true)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
-app.use(express.static("public"))
-app.use("/uploads", express.static("uploads"))
 
-// Rate limiting
+// Serve static files from public directory
+app.use(express.static("public"))
+
+// Rate limiting (simplified for Vercel)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { error: "Too many requests, please try again later." }
+  message: { error: "Too many requests, please try again later." },
+  keyGenerator: (req) => {
+    return req.headers['x-forwarded-for'] || req.socket.remoteAddress
+  }
 })
 
 app.use("/api/", apiLimiter)
 
-// Ensure uploads directory exists
-const uploadsDir = "uploads"
+// Ensure uploads directory exists (use /tmp for Vercel)
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : 'uploads'
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true })
 }
 
-// Multer configuration
+// Multer configuration with memory storage for Vercel
 const storage = multer.diskStorage({
   destination: uploadsDir,
   filename: (_, file, cb) => {
@@ -112,10 +116,27 @@ const upload = multer({
 // Utility functions
 const fileURL = (req, file) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol
-  return `${protocol}://${req.get("host")}/uploads/${file.filename}`
+  const host = req.headers['x-forwarded-host'] || req.get("host")
+  return `${protocol}://${host}/api/temp-file?file=${file.filename}`
 }
 
+// Temporary file access endpoint for Vercel
+app.get("/api/temp-file", (req, res) => {
+  const fileName = req.query.file
+  if (!fileName) {
+    return res.status(400).json({ error: "No file specified" })
+  }
+  const filePath = path.join(uploadsDir, fileName)
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath)
+  } else {
+    res.status(404).json({ error: "File not found" })
+  }
+})
+
 const cleanupOldFiles = () => {
+  if (!fs.existsSync(uploadsDir)) return
+  
   fs.readdir(uploadsDir, (err, files) => {
     if (err) return
 
@@ -125,6 +146,7 @@ const cleanupOldFiles = () => {
       fs.stat(filePath, (err, stat) => {
         if (err) return
 
+        // Delete files older than 1 hour
         if (now - stat.mtimeMs > 3600000) {
           fs.unlink(filePath, () => {
             console.log(`Cleaned up old file: ${file}`)
@@ -204,12 +226,11 @@ app.get("/api/counters", (req, res) => {
   })
 })
 
-// Reset counters (admin only - add your own auth)
+// Reset counters (admin only)
 app.post("/api/reset-counters", (req, res) => {
   const adminKey = req.headers['x-admin-key']
   
-  // Simple admin key check - change this to your own secret
-  if (adminKey !== 'your-secret-admin-key-123') {
+  if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'your-secret-admin-key-123') {
     return res.status(403).json({ success: false, error: "Unauthorized" })
   }
   
@@ -296,7 +317,7 @@ app.get("/health", (req, res) => {
   })
 })
 
-// Redirect root to portal or main app
+// Serve frontend
 app.get("/", (req, res) => {
   if (req.cookies.termsAccepted === "true") {
     res.sendFile(path.join(__dirname, "public", "index.html"))
@@ -305,9 +326,11 @@ app.get("/", (req, res) => {
   }
 })
 
-// Cleanup old files every 30 minutes
-setInterval(cleanupOldFiles, 30 * 60 * 1000)
-cleanupOldFiles()
+// Cleanup old files every 30 minutes (only in production)
+if (!process.env.VERCEL) {
+  setInterval(cleanupOldFiles, 30 * 60 * 1000)
+  cleanupOldFiles()
+}
 
 // Save counters on process exit
 process.on('SIGINT', () => {
@@ -320,22 +343,26 @@ process.on('SIGTERM', () => {
   process.exit()
 })
 
-// Error handling middleware
-app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, "public", "404.html"))
-})
-
-app.use((err, req, res, next) => {
+// Error handling middleware for API
+app.use("/api/*", (err, req, res, next) => {
   console.error(err.stack)
-  res.status(500).sendFile(path.join(__dirname, "public", "500.html"))
+  res.status(500).json({ 
+    success: false, 
+    error: "Internal server error" 
+  })
 })
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
-  console.log(`📁 Upload directory: ${path.join(__dirname, uploadsDir)}`)
-  console.log(`📊 Current stats: ${counters.successful} successful, ${counters.failed} failed`)
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`)
-})
+// Export for Vercel
+if (process.env.VERCEL) {
+  module.exports = app
+} else {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`)
+    console.log(`📁 Upload directory: ${path.join(__dirname, uploadsDir)}`)
+    console.log(`📊 Current stats: ${counters.successful} successful, ${counters.failed} failed`)
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`)
+  })
+}
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason)
@@ -344,5 +371,5 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error)
   saveCounters()
-  process.exit(1)
+  if (!process.env.VERCEL) process.exit(1)
 })
